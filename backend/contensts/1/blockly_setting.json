@@ -1,0 +1,4 @@
+{
+"setting":[{ "kind": "block", "type": "move_1_step" },
+{ "kind": "block", "type": "carry" }]
+}
