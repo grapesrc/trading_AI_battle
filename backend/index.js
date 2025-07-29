@@ -6,9 +6,54 @@ const port = 3001; // listenするport番号
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
-const { WebSocketServer } = require('ws');
+const { WebSocketServer, WebSocket } = require('ws');
+
+const coins = {
+    BeginnerCoin: {
+        price: 1,
+        buyList: [],
+        sellList: []
+    },
+    ChaosCoin: {
+        price: 1,
+        buyList: [],
+        sellList: []
+    },
+};
 
 app.use(cors());
+app.use(express.json());
+
+let wss;
+
+const broadcast = (data) => {
+    if (!wss) return;
+    const jsonData = JSON.stringify(data);
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(jsonData);
+        }
+    });
+};
+
+const broadcastOrderBook = () => {
+    const orderBook = {
+      type: 'orderBook',
+      buyList: coins.BeginnerCoin.buyList,
+      sellList: coins.BeginnerCoin.sellList,
+      price: coins.BeginnerCoin.price
+    };
+    broadcast(orderBook);
+};
+
+const broadcastPrice = () => {
+    const priceData = {
+        type: 'priceUpdate',
+        price: coins.BeginnerCoin.price,
+        time: new Date().toLocaleTimeString()
+    };
+    broadcast(priceData);
+};
 
 app.get('/test', (req, res) => {
     console.log(`Request URL: ${req.url}`);
@@ -54,22 +99,100 @@ app.get('/contests/:contest_id/blockly_setting', (req, res) => {
     });
 });
 
+app.get('/contests/1/beginner_coin_price', (req, res) => {
+    console.log(`Request URL: ${req.url}`);
+    res.json({ price: coins.BeginnerCoin.price });
+});
+
+app.post('/buy', (req, res) => {
+    console.log('Buy request body:', req.body);
+    const { coin, price, amount } = req.body;
+    if (!coins[coin]) {
+        return res.status(400).send({ error: 'Invalid coin' });
+    }
+
+    let remainingAmount = amount;
+
+    while (remainingAmount > 0) {
+        coins[coin].sellList.sort((a, b) => a.price - b.price);
+        const bestOffer = coins[coin].sellList[0];
+
+        if (bestOffer && bestOffer.price <= price) {
+            const tradeAmount = Math.min(remainingAmount, bestOffer.amount);
+            coins[coin].price = bestOffer.price;
+            bestOffer.amount -= tradeAmount;
+            remainingAmount -= tradeAmount;
+
+            if (bestOffer.amount === 0) {
+                coins[coin].sellList.shift();
+            }
+        } else {
+            coins[coin].buyList.push({ price, amount: remainingAmount });
+            coins[coin].buyList.sort((a, b) => b.price - a.price);
+            remainingAmount = 0; // Exit loop
+        }
+    }
+
+    res.send({ success: true, message: 'Trade executed or order placed' });
+
+    broadcastOrderBook();
+    broadcastPrice();
+});
+
+app.post('/sell', (req, res) => {
+    console.log('Sell request body:', req.body);
+    const { coin, price, amount } = req.body;
+    if (!coins[coin]) {
+        return res.status(400).send({ error: 'Invalid coin' });
+    }
+
+    let remainingAmount = amount;
+
+    while (remainingAmount > 0) {
+        coins[coin].buyList.sort((a, b) => b.price - a.price);
+        const bestOffer = coins[coin].buyList[0];
+
+        if (bestOffer && bestOffer.price >= price) {
+            const tradeAmount = Math.min(remainingAmount, bestOffer.amount);
+            coins[coin].price = bestOffer.price;
+            bestOffer.amount -= tradeAmount;
+            remainingAmount -= tradeAmount;
+
+            if (bestOffer.amount === 0) {
+                coins[coin].buyList.shift();
+            }
+        } else {
+            coins[coin].sellList.push({ price, amount: remainingAmount });
+            coins[coin].sellList.sort((a, b) => a.price - b.price);
+            remainingAmount = 0; // Exit loop
+        }
+    }
+
+    res.send({ success: true, message: 'Trade executed or order placed' });
+
+    broadcastOrderBook();
+    broadcastPrice();
+});
+
 app.get('/contests/:id/chart', (req, res) => {
     const contestId = req.params.id;
-    const interval = req.query.interval || '1m'; // Default to 1m if no interval is specified
+    const interval = req.query.interval || '1m';
     const filePath = path.join(__dirname, 'contensts', contestId, `simulation_data_${interval}.csv`);
     const results = [];
     fs.createReadStream(filePath)
         .pipe(csv())
         .on('data', (data) => results.push(data))
         .on('end', () => {
-            res.json(results);
+            const beginnerCoinPrice = coins.BeginnerCoin.price;
+            const adjustedResults = results.map(item => ({
+                ...item,
+                price: parseFloat(item.price) * beginnerCoinPrice
+            }));
+            res.json(adjustedResults);
         });
 });
 
 const { exec } = require('child_process');
-
-app.use(express.json());
 
 app.post('/run_python', (req, res) => {
     const { code } = req.body;
@@ -77,20 +200,15 @@ app.post('/run_python', (req, res) => {
         return res.status(400).send({ error: 'No code provided' });
     }
 
-    // Pythonコードを一時ファイルに保存
     const tempFilePath = path.join(__dirname, 'temp_script.py');
     fs.writeFile(tempFilePath, code, (err) => {
         if (err) {
             return res.status(500).send({ error: 'Failed to write Python script' });
         }
 
-        // Pythonスクリプトを実行
         exec(`python "${tempFilePath}"`, (error, stdout, stderr) => {
-            // 一時ファイルを削除
             fs.unlink(tempFilePath, (unlinkErr) => {
-                if (unlinkErr) {
-                    console.error('Failed to delete temp script:', unlinkErr);
-                }
+                if (unlinkErr) console.error('Failed to delete temp script:', unlinkErr);
             });
 
             if (error) {
@@ -102,11 +220,9 @@ app.post('/run_python', (req, res) => {
     });
 });
 
-
-
 app.get('/api/forex', async (req, res) => {
     try {
-        const api_key = 'YOUR_ALPHA_VANTAGE_API_KEY'; // ここにAPIキーを入力してください
+        const api_key = 'YOUR_ALPHA_VANTAGE_API_KEY';
         const response = await fetch(`https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=USD&to_currency=JPY&apikey=${api_key}`);
         const data = await response.json();
         if (data['Realtime Currency Exchange Rate']) {
@@ -126,21 +242,19 @@ const server = app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
 
-const wss = new WebSocketServer({ server });
+wss = new WebSocketServer({ server });
 
 wss.on('connection', ws => {
   console.log('Client connected');
-
-  const sendData = () => {
-    const price = (Math.random() * 10 + 170).toFixed(2);
-    const time = new Date().getSeconds().toString() + 's';
-    ws.send(JSON.stringify({ time, price }));
-  };
-
-  const interval = setInterval(sendData, 1000);
+  broadcastOrderBook();
+  broadcastPrice();
 
   ws.on('close', () => {
     console.log('Client disconnected');
-    clearInterval(interval);
   });
 });
+
+setInterval(() => {
+    broadcastOrderBook();
+    broadcastPrice();
+}, 1000);
