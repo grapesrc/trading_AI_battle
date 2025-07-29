@@ -19,6 +19,38 @@ pythonGenerator.forBlock['logic_terminate'] = function(block) {
     return 'break\n';
 };
 
+pythonGenerator.forBlock['trade_sell'] = function(block) {
+  var amount = block.getFieldValue('AMOUNT');
+  var coin_name = block.getFieldValue('COIN_NAME');
+  var price = block.getFieldValue('PRICE');
+  var code = `
+import requests
+
+print({'coin': '${coin_name}', 'price': ${price}, 'amount': ${amount}})
+try:
+    response = requests.post('http://localhost:3001/sell', json={'coin': '${coin_name}', 'price': '${price}', 'amount': '${amount}'}, timeout=5)
+    print(f"Sell Order Response: {response.status_code} {response.text}")
+except requests.exceptions.RequestException as e:
+    print(f"Sell Order Error: {e}")
+`;
+  return code;
+};
+
+pythonGenerator.forBlock['trade_buy'] = function(block) {
+  var amount = block.getFieldValue('AMOUNT');
+  var coin_name = block.getFieldValue('COIN_NAME');
+  var price = block.getFieldValue('PRICE');
+  var code = `
+import requests
+try:
+    response = requests.post('http://localhost:3001/buy', json={'coin': '${coin_name}', 'price': ${price}, 'amount': ${amount}}, timeout=5)
+    print(f"Buy Order Response: {response.status_code} {response.text}")
+except requests.exceptions.RequestException as e:
+    print(f"Buy Order Error: {e}")
+`;
+  return code;
+};
+
 pythonGenerator.forBlock['add_to_list'] = function(block) {
     const list = pythonGenerator.valueToCode(block, 'LIST', pythonGenerator.ORDER_ATOMIC) || '[]';
     const item = pythonGenerator.valueToCode(block, 'ITEM', pythonGenerator.ORDER_ATOMIC) || 'None';

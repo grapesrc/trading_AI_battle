@@ -52,6 +52,7 @@ const SimulationCanvas = () => {
 
       ws.onmessage = event => {
         const newData = JSON.parse(event.data);
+        if (newData.type !== 'priceUpdate') return;
 
         setSimulationChartData(prevChartData => {
           const { labels, datasets } = prevChartData;

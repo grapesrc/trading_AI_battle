@@ -7,7 +7,7 @@ export const toolbox_get = {
       "colour": "#66CCEE",
       "contents": [
         { "kind": "block", "type": "move_1_step" },
-{ "kind": "block", "type": "carry" }
+        { "kind": "block", "type": "carry" }
       ]
     },
     {
@@ -40,6 +40,15 @@ export const toolbox_get = {
             { "kind": "block", "type": "lists_create_with" },
             { "kind": "block", "type": "lists_setIndex" },
             { "kind": "block", "type": "lists_getIndex" },
+        ]
+    },
+    {
+        "kind": "category",
+        "name": "取引",
+        "colour": "#A0522D",
+        "contents": [
+            { "kind": "block", "type": "trade_sell" },
+            { "kind": "block", "type": "trade_buy" },
         ]
     }
   ]

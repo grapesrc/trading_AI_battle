@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Box, Grid, Paper, Typography, Button, Divider } from '@mui/material';
 import BlocklyComponent from '../components/BlocklyComponent';
 import SimulationCanvas from '../components/SimulationCanvas';
+import OrderBook from '../components/OrderBook';
 import { toolbox_get } from '../blockly/toolbox';
 import { defineStaticBlocks } from '../blockly/customBlocks';
 import '../blockly/PythonGenerator.js';
@@ -132,7 +133,7 @@ function Contest() {
         </Grid>
 
         {/* Right Sidebar: Simulation and Analysis */}
-        <Grid item xs={6} sx={{ width:'40vw',height: '100%' }}>
+        <Grid item xs={6} sx={{ width:'40vw',height: '100%', display: 'flex', flexDirection: 'column' }}>
           <Paper sx={{
               height: '100%',
               backgroundColor: 'transparent',
@@ -142,23 +143,26 @@ function Contest() {
               borderRadius: 0, 
               borderLeft: '1px solid #4AA0DC' 
             }}>
-            <Button variant="outlined" onClick={handleOpenStoryWindow} sx={{ mb: 2 }}>問題文を見る</Button>
-            
-            <Typography variant="h6" color="text.primary" sx={{ mb: 1 }}>シミュレーション</Typography>
-            <SimulationCanvas />
-            
-            <Divider sx={{ my: 1 }} />
+            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+              
+              
+              <Typography variant="h6" color="text.primary" sx={{ mb: 1 }}>シミュレーション</Typography>
+              <SimulationCanvas />
+              <OrderBook />
+              
+              <Divider sx={{ my: 1 }} />
 
-            <Typography variant="h6" color="text.primary" sx={{ mb: 1 }}>状況分析</Typography>
-            <Box sx={{ color: 'text.primary', flexGrow: 1 }}>
-                <Paper sx={{p: 1, mb: 1, bgcolor: 'background.paper'}} elevation={2}>
-                    <Typography variant="subtitle2">スコア: 12,345 / 最高: 15,000</Typography>
-                </Paper>
-                <Paper sx={{p: 1, backgroundColor: executionResult.stderr ? '#FFD0D0' : 'background.paper'}} elevation={2}>
-                    <Typography variant="subtitle2" sx={{color: executionResult.stderr ? 'error.main' : 'text.primary'}}>
-                        {executionResult.stderr || executionResult.stdout}
-                    </Typography>
-                </Paper>
+              <Typography variant="h6" color="text.primary" sx={{ mb: 1 }}>状況分析</Typography>
+              <Box sx={{ color: 'text.primary', flexGrow: 1 }}>
+                  <Paper sx={{p: 1, mb: 1, bgcolor: 'background.paper'}} elevation={2}>
+                      <Typography variant="subtitle2">スコア: 12,345 / 最高: 15,000</Typography>
+                  </Paper>
+                  <Paper sx={{p: 1, backgroundColor: executionResult.stderr ? '#FFD0D0' : 'background.paper'}} elevation={2}>
+                      <Typography variant="subtitle2" sx={{color: executionResult.stderr ? 'error.main' : 'text.primary'}}>
+                          {executionResult.stderr || executionResult.stdout}
+                      </Typography>
+                  </Paper>
+              </Box>
             </Box>
 
             <Divider sx={{ my: 2 }} />

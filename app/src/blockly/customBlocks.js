@@ -22,6 +22,40 @@ const defineStaticBlocks = () => {
         }
     };
 
+    Blockly.Blocks['trade_sell'] = {
+      init: function() {
+        this.appendDummyInput()
+            .appendField(new Blockly.FieldNumber(1, 1), "AMOUNT")
+            .appendField("枚の")
+            .appendField(new Blockly.FieldDropdown([["BeginnerCoin","BeginnerCoin"], ["ChaosCoin","ChaosCoin"]]), "COIN_NAME")
+            .appendField("を、1枚あたり")
+            .appendField(new Blockly.FieldNumber(100, 0), "PRICE")
+            .appendField("KakakuCoinで売る");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(230);
+        this.setTooltip("指定した枚数のコインを特定の価格で売ります。");
+        this.setHelpUrl("");
+      }
+    };
+
+    Blockly.Blocks['trade_buy'] = {
+      init: function() {
+        this.appendDummyInput()
+            .appendField(new Blockly.FieldNumber(1, 1), "AMOUNT")
+            .appendField("枚の")
+            .appendField(new Blockly.FieldDropdown([["BeginnerCoin","BeginnerCoin"], ["ChaosCoin","ChaosCoin"]]), "COIN_NAME")
+            .appendField("を、1枚あたり")
+            .appendField(new Blockly.FieldNumber(100, 0), "PRICE")
+            .appendField("KakakuCoinで買う");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(230);
+        this.setTooltip("指定した枚数のコインを特定の価格で買います。");
+        this.setHelpUrl("");
+      }
+    };
+
     
 
     Blockly.common.defineBlocksWithJsonArray([
