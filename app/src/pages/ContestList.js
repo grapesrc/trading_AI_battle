@@ -11,7 +11,7 @@ const newContests = [
 ];
 
 const beginnerChallenges = [
-    { id: 4, title: '入門チャレンジ1', description: '初心者向けの簡単なチャレンジです。', participants: 250, time: '無期限', thumbnail: 'https://via.placeholder.com/300' },
+    { id: 'a', title: '入門チャレンジ1', description: '初心者向けの簡単なチャレンジです。', participants: 250, time: '無期限', thumbnail: 'https://via.placeholder.com/300' },
 ];
 
 const ContestCard = ({ contest }) => (

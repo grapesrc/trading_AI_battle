@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Box, Grid, Paper, Typography, Button, Divider } from '@mui/material';
+import { useParams, useLocation } from 'react-router-dom';
+import { Box, Grid, Paper, Typography, Button, Divider, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import BlocklyComponent from '../components/BlocklyComponent';
 import SimulationCanvas from '../components/SimulationCanvas';
 import OrderBook from '../components/OrderBook';
@@ -8,6 +8,10 @@ import { toolbox_get } from '../blockly/toolbox';
 import { defineStaticBlocks } from '../blockly/customBlocks';
 import '../blockly/PythonGenerator.js';
 import showdown from 'showdown';
+import Editor from 'react-simple-code-editor';
+import { highlight, languages } from 'prismjs/components/prism-core';
+import 'prismjs/components/prism-python';
+import 'prismjs/themes/prism.css';
 
 
 
@@ -15,17 +19,32 @@ import showdown from 'showdown';
 defineStaticBlocks();
 
 function Contest() {
-  const { id } = useParams();
+  const { id: paramId } = useParams();
+  const location = useLocation();
+  const [id, setId] = useState(paramId);
   const [generatedCode, setGeneratedCode] = useState('');
   const [executionResult, setExecutionResult] = useState({ stdout: '', stderr: '' });
   const blocklyComponentRef = useRef(null);
   const [story, setStory] = useState('');
   const [toolbox, setToolbox] = useState(null); // Initialize toolbox as null
   const [simulationCode, setSimulationCode] = useState('');
+  const [editorType, setEditorType] = useState('blockly');
+  const [pythonCode, setPythonCode] = useState('');
+
+  useEffect(() => {
+    if (location.pathname === '/contest/a') {
+      setId('a');
+    } else {
+      setId(paramId);
+    }
+  }, [location, paramId]);
 
   useEffect(() => {
     const initializeBlockly = async () => {
+                      const newToolbox = JSON.parse(JSON.stringify(toolbox_get));
+                setToolbox(newToolbox);
         if (id) {
+          /* 普通に要らない
             try {
 
                 // 2. Fetch toolbox settings
@@ -36,9 +55,6 @@ function Contest() {
                 const data = await res.json();
 
                 // 3. Update the toolbox state
-                const newToolbox = JSON.parse(JSON.stringify(toolbox_get));
-                newToolbox.contents[0].contents = data.setting;
-                setToolbox(newToolbox);
 
                 // Fetch story
                 fetch(`http://localhost:3001/contests/${id}/story`)
@@ -52,42 +68,61 @@ function Contest() {
                     .then(data => setSimulationCode(data))
                     .catch(err => console.error("Failed to fetch simulation code:", err));
 
+                // Set initial Python code
+                const coinName = id === 'a' ? 'lessonCoin1' : 'BeginnerCoin';
+                setPythonCode(`# This is a Python editor.\n# You can write your code here.\n\nimport requests\nimport sys\n\n# Get user ID from command line arguments\nuserId = sys.argv[1]\n\ndef buy(coin, price, amount):\n    try:\n        response = requests.post('http://localhost:3001/buy', json={'coin': coin, 'price': price, 'amount': amount, 'userId': userId}, timeout=5)\n        print(f"Buy Order Response: {response.status_code} {response.text}")\n    except requests.exceptions.RequestException as e:\n        print(f"Buy Order Error: {e}")\n\ndef sell(coin, price, amount):\n    try:\n        response = requests.post('http://localhost:3001/sell', json={'coin': coin, 'price': price, 'amount': amount, 'userId': userId}, timeout=5)\n        print(f"Sell Order Response: {response.status_code} {response.text}")\n    except requests.exceptions.RequestException as e:\n        print(f"Sell Order Error: {e}")\n\n# Example usage:\n# buy('' + coinName + ''', 1, 10)\n# sell('' + coinName + ''', 1, 10)\n`);
+
             } catch (err) {
                 console.error("Failed to initialize Blockly environment:", err);
             }
+                */
         }
     };
 
     initializeBlockly();
   }, [id]);
 
+  const handleEditorChange = (event, newEditorType) => {
+    if (newEditorType !== null) {
+      setEditorType(newEditorType);
+    }
+  };
+
   const handleRunSimulation = async () => {
-    if (blocklyComponentRef.current) {
-      const code = blocklyComponentRef.current.getGeneratedCode();
-      setGeneratedCode(code);
-
-      console.log(code)
-
-      try {
-        const response = await fetch('http://localhost:3001/run_python', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ id, code }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-        }
-
-        const result = await response.json();
-        setExecutionResult(result);
-        console.log('Execution result:', result);
-      } catch (error) {
-        console.error('Failed to run Python code:', error);
+    let code;
+    if (editorType === 'blockly') {
+      if (blocklyComponentRef.current) {
+        code = blocklyComponentRef.current.getGeneratedCode();
       }
+    } else {
+      code = pythonCode;
+    }
+    setGeneratedCode(code);
+
+
+    console.log(code)
+
+    const userId = sessionStorage.getItem('userId'); // Get userId
+
+    try {
+      const response = await fetch('http://localhost:3001/run_python', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, code, userId }), // Add userId to body
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+      }
+
+      const result = await response.json();
+      setExecutionResult(result);
+      console.log('Execution result:', result);
+    } catch (error) {
+      console.error('Failed to run Python code:', error);
     }
   };
 
@@ -105,28 +140,57 @@ function Contest() {
 
         {/* Center: Blockly Workspace */}
         <Grid item sx={{width:'55vw', height: '100%' }}>
-          {toolbox && (
-            <BlocklyComponent
-              ref={blocklyComponentRef}
-              toolbox={toolbox}
-              workspaceConfiguration={{
-                renderer: 'geras',
-                grid: {
-                  spacing: 25,
-                  length: 3,
-                  colour: '#A2D9EE',
-                  snap: true,
-                },
-                zoom: {
-                  controls: true,
-                  wheel: true,
-                  startScale: 0.9,
-                  maxScale: 3,
-                  minScale: 0.3,
-                  scaleSpeed: 1.2,
-                },
-                media: 'https://blockly-demo.appspot.com/static/media/',
-                toolboxPosition: 'start',
+          <ToggleButtonGroup
+            value={editorType}
+            exclusive
+            onChange={handleEditorChange}
+            aria-label="editor type"
+          >
+            <ToggleButton value="blockly" aria-label="blockly editor">
+              Blockly
+            </ToggleButton>
+            <ToggleButton value="python" aria-label="python editor">
+              Python
+            </ToggleButton>
+          </ToggleButtonGroup>
+          {editorType === 'blockly' ? (
+            toolbox && (
+              <BlocklyComponent
+                ref={blocklyComponentRef}
+                toolbox={toolbox}
+                workspaceConfiguration={{
+                  renderer: 'geras',
+                  grid: {
+                    spacing: 25,
+                    length: 3,
+                    colour: '#A2D9EE',
+                    snap: true,
+                  },
+                  zoom: {
+                    controls: true,
+                    wheel: true,
+                    startScale: 0.9,
+                    maxScale: 3,
+                    minScale: 0.3,
+                    scaleSpeed: 1.2,
+                  },
+                  media: 'https://blockly-demo.appspot.com/static/media/',
+                  toolboxPosition: 'start',
+                }}
+              />
+            )
+          ) : (
+            <Editor
+              value={pythonCode}
+              onValueChange={code => setPythonCode(code)}
+              highlight={code => highlight(code, languages.python)}
+              padding={10}
+              style={{
+                fontFamily: '"Fira code", "Fira Mono", monospace',
+                fontSize: 12,
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ddd',
+                height: 'calc(100% - 48px)',
               }}
             />
           )}
@@ -147,8 +211,8 @@ function Contest() {
               
               
               <Typography variant="h6" color="text.primary" sx={{ mb: 1 }}>シミュレーション</Typography>
-              <SimulationCanvas />
-              <OrderBook />
+              <SimulationCanvas contestId={id} />
+              <OrderBook contestId={id} />
               
               <Divider sx={{ my: 1 }} />
 

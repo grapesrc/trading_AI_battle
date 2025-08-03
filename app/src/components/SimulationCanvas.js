@@ -30,7 +30,7 @@ const timeIntervals = {
   '1h': { unit: 'h', multiplier: 1, count: 6 },
 };
 
-const SimulationCanvas = () => {
+const SimulationCanvas = ({ contestId }) => {
   const simulationChartRef = useRef(null);
   const [simulationChartData, setSimulationChartData] = useState({ labels: [], datasets: [] });
   const [timeInterval, setTimeInterval] = useState('1m');
@@ -44,7 +44,7 @@ const SimulationCanvas = () => {
     }
 
     if (timeInterval === '1m') {
-      const ws = new WebSocket('ws://localhost:3001');
+      const ws = new WebSocket(`ws://localhost:3001?contestId=${contestId}`);
 
       ws.onopen = () => {
         console.log('WebSocket connected');
@@ -95,7 +95,7 @@ const SimulationCanvas = () => {
     } else {
       const fetchData = async () => {
         try {
-          const response = await fetch(`http://localhost:3001/contests/1/chart?interval=${timeInterval}`);
+          const response = await fetch(`http://localhost:3001/contests/${contestId}/chart?interval=${timeInterval}`);
           const data = await response.json();
           const labels = data.map(item => item.time);
           const dataPoints = data.map(item => parseFloat(item.price));
@@ -137,7 +137,7 @@ const SimulationCanvas = () => {
 
       fetchData();
     }
-  }, [timeInterval]);
+  }, [timeInterval, contestId]);
 
   const simulationOptions = {
     responsive: true,

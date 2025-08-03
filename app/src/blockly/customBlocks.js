@@ -27,7 +27,7 @@ const defineStaticBlocks = () => {
         this.appendDummyInput()
             .appendField(new Blockly.FieldNumber(1, 1), "AMOUNT")
             .appendField("枚の")
-            .appendField(new Blockly.FieldDropdown([["BeginnerCoin","BeginnerCoin"], ["ChaosCoin","ChaosCoin"]]), "COIN_NAME")
+            .appendField(new Blockly.FieldDropdown([["BeginnerCoin","BeginnerCoin"], ["ChaosCoin","ChaosCoin"], ["lessonCoin1","lessonCoin1"]]), "COIN_NAME")
             .appendField("を、1枚あたり")
             .appendField(new Blockly.FieldNumber(100, 0), "PRICE")
             .appendField("KakakuCoinで売る");
@@ -44,7 +44,7 @@ const defineStaticBlocks = () => {
         this.appendDummyInput()
             .appendField(new Blockly.FieldNumber(1, 1), "AMOUNT")
             .appendField("枚の")
-            .appendField(new Blockly.FieldDropdown([["BeginnerCoin","BeginnerCoin"], ["ChaosCoin","ChaosCoin"]]), "COIN_NAME")
+            .appendField(new Blockly.FieldDropdown([["BeginnerCoin","BeginnerCoin"], ["ChaosCoin","ChaosCoin"], ["lessonCoin1","lessonCoin1"]]), "COIN_NAME")
             .appendField("を、1枚あたり")
             .appendField(new Blockly.FieldNumber(100, 0), "PRICE")
             .appendField("KakakuCoinで買う");

@@ -25,10 +25,12 @@ pythonGenerator.forBlock['trade_sell'] = function(block) {
   var price = block.getFieldValue('PRICE');
   var code = `
 import requests
+import sys
 
-print({'coin': '${coin_name}', 'price': ${price}, 'amount': ${amount}})
+userId = sys.argv[1]
+print({'coin': '${coin_name}', 'price': ${price}, 'amount': ${amount}, 'userId': userId})
 try:
-    response = requests.post('http://localhost:3001/sell', json={'coin': '${coin_name}', 'price': '${price}', 'amount': '${amount}'}, timeout=5)
+    response = requests.post('http://localhost:3001/sell', json={'coin': '${coin_name}', 'price': '${price}', 'amount': '${amount}', 'userId': userId}, timeout=5)
     print(f"Sell Order Response: {response.status_code} {response.text}")
 except requests.exceptions.RequestException as e:
     print(f"Sell Order Error: {e}")
@@ -42,8 +44,11 @@ pythonGenerator.forBlock['trade_buy'] = function(block) {
   var price = block.getFieldValue('PRICE');
   var code = `
 import requests
+import sys
+
+userId = sys.argv[1]
 try:
-    response = requests.post('http://localhost:3001/buy', json={'coin': '${coin_name}', 'price': ${price}, 'amount': ${amount}}, timeout=5)
+    response = requests.post('http://localhost:3001/buy', json={'coin': '${coin_name}', 'price': ${price}, 'amount': ${amount}, 'userId': userId}, timeout=5)
     print(f"Buy Order Response: {response.status_code} {response.text}")
 except requests.exceptions.RequestException as e:
     print(f"Buy Order Error: {e}")

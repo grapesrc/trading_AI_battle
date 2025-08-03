@@ -11,12 +11,12 @@ import {
     Grid 
 } from '@mui/material';
 
-const OrderBook = () => {
+const OrderBook = ({ contestId }) => {
     const [buyList, setBuyList] = useState([]);
     const [sellList, setSellList] = useState([]);
 
     useEffect(() => {
-        const ws = new WebSocket('ws://localhost:3001');
+        const ws = new WebSocket(`ws://localhost:3001?contestId=${contestId}`);
 
         ws.onopen = () => {
             console.log('connected');
@@ -36,7 +36,7 @@ const OrderBook = () => {
         return () => {
             ws.close();
         };
-    }, []);
+    }, [contestId]);
 
     return (
         <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
