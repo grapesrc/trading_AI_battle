@@ -19,6 +19,11 @@ const coins = {
         buyList: [],
         sellList: []
     },
+    lessonCoin1: {
+        price: 1,
+        buyList: [],
+        sellList: []
+    },
 };
 
 app.use(cors());
@@ -36,24 +41,7 @@ const broadcast = (data) => {
     });
 };
 
-const broadcastOrderBook = () => {
-    const orderBook = {
-      type: 'orderBook',
-      buyList: coins.BeginnerCoin.buyList,
-      sellList: coins.BeginnerCoin.sellList,
-      price: coins.BeginnerCoin.price
-    };
-    broadcast(orderBook);
-};
 
-const broadcastPrice = () => {
-    const priceData = {
-        type: 'priceUpdate',
-        price: coins.BeginnerCoin.price,
-        time: new Date().toLocaleTimeString()
-    };
-    broadcast(priceData);
-};
 
 app.get('/test', (req, res) => {
     console.log(`Request URL: ${req.url}`);
@@ -99,14 +87,20 @@ app.get('/contests/:contest_id/blockly_setting', (req, res) => {
     });
 });
 
-app.get('/contests/1/beginner_coin_price', (req, res) => {
-    console.log(`Request URL: ${req.url}`);
-    res.json({ price: coins.BeginnerCoin.price });
+app.get('/contests/:id/price', (req, res) => {
+    const contestId = req.params.id;
+    const coinName = contestCoins[contestId] || contestCoins['default'];
+    const coin = coins[coinName];
+
+    if (!coin) {
+        return res.status(404).send('Coin not found for this contest');
+    }
+    res.json({ price: coin.price });
 });
 
 app.post('/buy', (req, res) => {
     console.log('Buy request body:', req.body);
-    const { coin, price, amount } = req.body;
+    const { coin, price, amount, userId } = req.body;
     if (!coins[coin]) {
         return res.status(400).send({ error: 'Invalid coin' });
     }
@@ -127,7 +121,7 @@ app.post('/buy', (req, res) => {
                 coins[coin].sellList.shift();
             }
         } else {
-            coins[coin].buyList.push({ price, amount: remainingAmount });
+            coins[coin].buyList.push({ price, amount: remainingAmount, userId });
             coins[coin].buyList.sort((a, b) => b.price - a.price);
             remainingAmount = 0; // Exit loop
         }
@@ -135,13 +129,30 @@ app.post('/buy', (req, res) => {
 
     res.send({ success: true, message: 'Trade executed or order placed' });
 
-    broadcastOrderBook();
-    broadcastPrice();
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN && client.coinName === coin) {
+            const updatedCoin = coins[coin];
+            const orderBook = {
+                type: 'orderBook',
+                buyList: updatedCoin.buyList.map(o => ({ price: o.price, amount: o.amount })),
+                sellList: updatedCoin.sellList.map(o => ({ price: o.price, amount: o.amount })),
+                price: updatedCoin.price
+            };
+            client.send(JSON.stringify(orderBook));
+
+            const priceData = {
+                type: 'priceUpdate',
+                price: updatedCoin.price,
+                time: new Date().toLocaleTimeString()
+            };
+            client.send(JSON.stringify(priceData));
+        }
+    });
 });
 
 app.post('/sell', (req, res) => {
     console.log('Sell request body:', req.body);
-    const { coin, price, amount } = req.body;
+    const { coin, price, amount, userId } = req.body;
     if (!coins[coin]) {
         return res.status(400).send({ error: 'Invalid coin' });
     }
@@ -162,7 +173,7 @@ app.post('/sell', (req, res) => {
                 coins[coin].buyList.shift();
             }
         } else {
-            coins[coin].sellList.push({ price, amount: remainingAmount });
+            coins[coin].sellList.push({ price, amount: remainingAmount, userId });
             coins[coin].sellList.sort((a, b) => a.price - b.price);
             remainingAmount = 0; // Exit loop
         }
@@ -170,23 +181,60 @@ app.post('/sell', (req, res) => {
 
     res.send({ success: true, message: 'Trade executed or order placed' });
 
-    broadcastOrderBook();
-    broadcastPrice();
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN && client.coinName === coin) {
+            const updatedCoin = coins[coin];
+            const orderBook = {
+                type: 'orderBook',
+                buyList: updatedCoin.buyList.map(o => ({ price: o.price, amount: o.amount })),
+                sellList: updatedCoin.sellList.map(o => ({ price: o.price, amount: o.amount })),
+                price: updatedCoin.price
+            };
+            client.send(JSON.stringify(orderBook));
+
+            const priceData = {
+                type: 'priceUpdate',
+                price: updatedCoin.price,
+                time: new Date().toLocaleTimeString()
+            };
+            client.send(JSON.stringify(priceData));
+        }
+    });
 });
+
+const contestCoins = {
+    '1': 'BeginnerCoin',
+    'a': 'lessonCoin1',
+    'lessonCoin1': 'lessonCoin1',
+    'default': 'BeginnerCoin'
+};
 
 app.get('/contests/:id/chart', (req, res) => {
     const contestId = req.params.id;
+    const coinName = contestCoins[contestId] || contestCoins['default'];
+    const coin = coins[coinName];
+
+    if (!coin) {
+        return res.status(404).send('Coin not found for this contest');
+    }
+
     const interval = req.query.interval || '1m';
-    const filePath = path.join(__dirname, 'contensts', contestId, `simulation_data_${interval}.csv`);
+    const chartContestId = contestId === 'a' ? '1' : contestId;
+    const filePath = path.join(__dirname, 'contensts', chartContestId, `simulation_data_${interval}.csv`);
+    
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).send('Chart data not found');
+    }
+
     const results = [];
     fs.createReadStream(filePath)
         .pipe(csv())
         .on('data', (data) => results.push(data))
         .on('end', () => {
-            const beginnerCoinPrice = coins.BeginnerCoin.price;
+            const coinPrice = coin.price;
             const adjustedResults = results.map(item => ({
                 ...item,
-                price: parseFloat(item.price) * beginnerCoinPrice
+                price: parseFloat(item.price) * coinPrice
             }));
             res.json(adjustedResults);
         });
@@ -195,7 +243,7 @@ app.get('/contests/:id/chart', (req, res) => {
 const { exec } = require('child_process');
 
 app.post('/run_python', (req, res) => {
-    const { code } = req.body;
+    const { code, userId } = req.body; // Get userId
     if (!code) {
         return res.status(400).send({ error: 'No code provided' });
     }
@@ -206,7 +254,7 @@ app.post('/run_python', (req, res) => {
             return res.status(500).send({ error: 'Failed to write Python script' });
         }
 
-        exec(`python "${tempFilePath}"`, (error, stdout, stderr) => {
+        exec(`python "${tempFilePath}" "${userId}"`, (error, stdout, stderr) => { // Pass userId as argument
             fs.unlink(tempFilePath, (unlinkErr) => {
                 if (unlinkErr) console.error('Failed to delete temp script:', unlinkErr);
             });
@@ -244,17 +292,60 @@ const server = app.listen(port, () => {
 
 wss = new WebSocketServer({ server });
 
-wss.on('connection', ws => {
-  console.log('Client connected');
-  broadcastOrderBook();
-  broadcastPrice();
+wss.on('connection', (ws, req) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const contestId = url.searchParams.get('contestId');
+  const coinName = contestCoins[contestId] || contestCoins['default'];
+
+  // Attach coinName to the ws connection object
+  ws.coinName = coinName;
+
+  console.log(`Client connected for contest ${contestId}, coin ${ws.coinName}`);
+
+  const coin = coins[ws.coinName];
+  if (coin) {
+    // Send initial state
+    const orderBook = {
+      type: 'orderBook',
+      buyList: coin.buyList.map(o => ({ price: o.price, amount: o.amount })),
+      sellList: coin.sellList.map(o => ({ price: o.price, amount: o.amount })),
+      price: coin.price
+    };
+    ws.send(JSON.stringify(orderBook));
+
+    const priceData = {
+        type: 'priceUpdate',
+        price: coin.price,
+        time: new Date().toLocaleTimeString()
+    };
+    ws.send(JSON.stringify(priceData));
+  }
 
   ws.on('close', () => {
-    console.log('Client disconnected');
+    console.log(`Client for ${ws.coinName} disconnected`);
   });
 });
 
 setInterval(() => {
-    broadcastOrderBook();
-    broadcastPrice();
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN && client.coinName) {
+            const coin = coins[client.coinName];
+            if (coin) {
+                const orderBook = {
+                    type: 'orderBook',
+                    buyList: coin.buyList.map(o => ({ price: o.price, amount: o.amount })),
+                    sellList: coin.sellList.map(o => ({ price: o.price, amount: o.amount })),
+                    price: coin.price
+                };
+                client.send(JSON.stringify(orderBook));
+
+                const priceData = {
+                    type: 'priceUpdate',
+                    price: coin.price,
+                    time: new Date().toLocaleTimeString()
+                };
+                client.send(JSON.stringify(priceData));
+            }
+        }
+    });
 }, 1000);
