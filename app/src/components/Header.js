@@ -1,30 +1,23 @@
 
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 import { Link } from 'react-router-dom';
 
 const Header = () => {
   return (
-    <AppBar position="static" sx={{ backgroundColor: '#A2D9EE' }}>
+    <AppBar position="static" elevation={0}>
       <Toolbar>
-        <Typography variant="h6" component={Link} to="/" sx={{ flexGrow: 1, color: 'text.primary', textDecoration: 'none' }}>
-          Trading bot battles
+        <Typography variant="h6" component={Link} to="/" sx={{ flexGrow: 1, fontWeight: 'bold', color: 'text.primary', textDecoration: 'none' }}>
+          Trade Battle
         </Typography>
-        <Button color="inherit" component={Link} to="/" sx={{ color: 'text.primary' }}>
-          コンテスト一覧
-        </Button>
-        <Button color="inherit" component={Link} to="/mypage" sx={{ color: 'text.primary' }}>
-          マイページ
-        </Button>
-        <Button color="inherit" component={Link} to="/rankings" sx={{ color: 'text.primary' }}>
-          ランキング
-        </Button>
-        <Button color="inherit" component={Link} to="/help" sx={{ color: 'text.primary' }}>
-          ヘルプ
-        </Button>
-        <Button color="inherit" component={Link} to="/notifications" sx={{ color: 'text.primary' }}>
-          お知らせ
-        </Button>
+        <Box>
+          <Button component={Link} to="/" sx={{ color: 'text.secondary', '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' } }}>
+            Contests
+          </Button>
+          <Button component={Link} to="/rankings" sx={{ color: 'text.secondary', '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' } }}>
+            Rankings
+          </Button>
+        </Box>
       </Toolbar>
     </AppBar>
   );

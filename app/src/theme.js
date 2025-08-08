@@ -1,27 +1,44 @@
-
 import { createTheme } from '@mui/material/styles';
 import * as Blockly from 'blockly/core';
+
+// Zenn.dev inspired color palette
+const zennPalette = {
+  primary: '#3ea8ff',       // Accent blue
+  backgroundDefault: '#EEFAFF', // Light blue background
+  backgroundPaper: '#ffffff',   // White for cards, etc.
+  textPrimary: '#222222',       // Dark gray for main text
+  textSecondary: '#555555',   // Lighter gray for secondary text
+  divider: '#eeeeee',          // Light border/divider color
+};
 
 // MUI Theme
 const muiTheme = createTheme({
   palette: {
     primary: {
-      main: '#007ACC', // アクセントカラー1
+      main: zennPalette.primary,
     },
     secondary: {
-      main: '#4AA0DC', // アクセントカラー2
+      main: zennPalette.primary, // Using the same for consistency
     },
     background: {
-      default: '#E0EBF7', // メインベースカラー
-      paper: '#F0F0FF',    // サブベースカラー
+      default: zennPalette.backgroundDefault,
+      paper: zennPalette.backgroundPaper,
     },
     text: {
-      primary: '#1A2A3A',   // テキストカラー（メイン）
-      secondary: '#50677C', // テキストカラー（補足）
+      primary: zennPalette.textPrimary,
+      secondary: zennPalette.textSecondary,
     },
+    divider: zennPalette.divider,
     error: {
       main: '#E04040',
     },
+  },
+  typography: {
+    fontFamily: [
+      '"Helvetica Neue"',
+      'Arial',
+      'sans-serif',
+    ].join(','),
   },
   components: {
     MuiCssBaseline: {
@@ -38,25 +55,35 @@ const muiTheme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: zennPalette.backgroundPaper,
+          border: `1px solid ${zennPalette.divider}`,
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+          transition: 'box-shadow 0.2s ease-in-out',
           '&:hover': {
-            backgroundColor: '#D0EBF7',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
           },
-          boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
         }
       }
     },
     MuiButton: {
       styleOverrides: {
+        root: {
+          textTransform: 'none', // Buttons with normal casing
+          borderRadius: '8px',
+        },
         containedPrimary: {
           color: '#FFFFFF',
+          boxShadow: 'none',
+          '&:hover': {
+            boxShadow: 'none',
+          },
         },
       }
     },
     MuiTable: {
         styleOverrides: {
             root: {
-                backgroundColor: '#FFFFFF',
+                backgroundColor: zennPalette.backgroundPaper,
             }
         }
     },
@@ -64,15 +91,28 @@ const muiTheme = createTheme({
         styleOverrides: {
             root: {
                 '&:nth-of-type(odd)': {
-                    backgroundColor: '#F0F8FC',
+                    backgroundColor: 'rgba(0, 0, 0, 0.02)',
                 },
+                '&:hover': {
+                    backgroundColor: 'rgba(62, 168, 255, 0.1)',
+                }
             }
         }
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: zennPalette.backgroundPaper,
+          color: zennPalette.textPrimary,
+          boxShadow: 'none',
+          borderBottom: `1px solid ${zennPalette.divider}`,
+        }
+      }
     }
   },
 });
 
-// Blockly Theme
+// Blockly Theme (keeping the original for now)
 const blocklyTheme = Blockly.Theme.defineTheme('custom-theme', {
   'base': Blockly.Themes.Zelos,
   'blockStyles': {
@@ -94,11 +134,11 @@ const blocklyTheme = Blockly.Theme.defineTheme('custom-theme', {
     'variable_category': { 'colour': '#E8E8E8' },
   },
   'componentStyles': {
-    'workspaceBackgroundColour': '#E0F8F7',
-    'toolboxBackgroundColour': '#A2EEEE',
-    'flyoutBackgroundColour': '#A2EEEE',
-    'scrollbarColour': '#4AA0DC',
-    'insertionMarkerColour': '#FFFFFF',
+    'workspaceBackgroundColour': '#F0F7FA',
+    'toolboxBackgroundColour': '#E9EEF2',
+    'flyoutBackgroundColour': '#E0E6EB',
+    'scrollbarColour': '#B4BCC2',
+    'insertionMarkerColour': '#4A90E2',
     'insertionMarkerOpacity': 0.3,
   }
 });

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { Typography, Container, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Box, Grid, Card, CardContent } from '@mui/material';
+import { Typography, Container, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Box, Grid } from '@mui/material';
 
 const rankings = [
   { rank: 1, user: 'AlphaExplorer', score: 15234, date: '2025/06/20 14:30' },
@@ -10,7 +10,7 @@ const rankings = [
 ];
 
 const hallOfFame = [
-    { id: 1, user: 'CreativeCoder', score: 16000, title: '画期的な資源収集術', description: '特定の状況下で複数の資源を同時に収集するロジックを考案。' },
+    { id: 1, user: 'CreativeCoder', score: 16000, title: 'Innovative Resource Gathering', description: 'Devised a logic to gather multiple resources simultaneously under specific conditions.' },
 ];
 
 function Rankings() {
@@ -19,23 +19,23 @@ function Rankings() {
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}>
       <Container sx={{ py: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom color="text.primary">
-          コンテスト名: 資源収集ロボットの効率化チャレンジ - ランキング
+        <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
+          Contest: Resource Gathering Challenge - Rankings
         </Typography>
-        <Box sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
-            <Button>総合ランキング</Button>
-            <Button>日別ランキング</Button>
-            <Button>自分のロジック</Button>
+        <Box sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
+            <Button sx={{ borderRadius: '8px 8px 0 0', border: '1px solid #eee', borderBottom: 'none', backgroundColor: 'white', color: 'primary.main' }}>Overall</Button>
+            <Button sx={{ color: 'text.secondary' }}>Daily</Button>
+            <Button sx={{ color: 'text.secondary' }}>My Logic</Button>
         </Box>
-        <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3 }}>
+        <TableContainer component={Paper} sx={{ mb: 4, border: '1px solid #eee' }}>
           <Table sx={{ minWidth: 650 }} aria-label="simple table">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#A2D9EE' }}>
-                <TableCell sx={{ color: 'text.primary' }}>順位</TableCell>
-                <TableCell sx={{ color: 'text.primary' }}>ユーザー名</TableCell>
-                <TableCell align="right" sx={{ color: 'text.primary' }}>スコア</TableCell>
-                <TableCell align="right" sx={{ color: 'text.primary' }}>提出日時</TableCell>
-                <TableCell align="center" sx={{ color: 'text.primary' }}>ロジックを見る</TableCell>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 'bold' }}>Rank</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>User</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold' }}>Score</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold' }}>Date</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold' }}>View Logic</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -46,7 +46,7 @@ function Rankings() {
                   <TableCell align="right">{row.score}</TableCell>
                   <TableCell align="right">{row.date}</TableCell>
                   <TableCell align="center">
-                    <Button variant="contained" size="small" color="secondary">見る</Button>
+                    <Button variant="outlined" size="small">View</Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -54,20 +54,18 @@ function Rankings() {
           </Table>
         </TableContainer>
 
-        <Typography variant="h4" component="h2" gutterBottom color="text.primary">
-          殿堂入りロジック
+        <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+          Hall of Fame
         </Typography>
-        <Grid container spacing={4}>
+        <Grid container spacing={2}>
           {hallOfFame.map((logic) => (
             <Grid item key={logic.id} xs={12} md={6}>
-                <Card>
-                    <CardContent>
-                        <Typography variant="h5" component="div">{logic.title}</Typography>
-                        <Typography sx={{ mb: 1.5 }} color="text.secondary">考案者: {logic.user} | スコア: {logic.score}</Typography>
-                        <Typography variant="body2">{logic.description}</Typography>
-                        <Button size="small" sx={{ mt: 1 }}>ロジック詳細へ</Button>
-                    </CardContent>
-                </Card>
+                <Paper sx={{ p: 2, border: '1px solid #eee' }}>
+                    <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>{logic.title}</Typography>
+                    <Typography sx={{ mb: 1.5, mt: 0.5 }} color="text.secondary">By: {logic.user} | Score: {logic.score}</Typography>
+                    <Typography variant="body2">{logic.description}</Typography>
+                    <Button size="small" sx={{ mt: 1, p: 0 }}>View Logic Details</Button>
+                </Paper>
             </Grid>
           ))}
         </Grid>
