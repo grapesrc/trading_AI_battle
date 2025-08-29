@@ -7,8 +7,9 @@ const zennPalette = {
   backgroundDefault: '#EEFAFF', // Light blue background
   backgroundPaper: '#ffffff',   // White for cards, etc.
   textPrimary: '#222222',       // Dark gray for main text
-  textSecondary: '#555555',   // Lighter gray for secondary text
-  divider: '#eeeeee',          // Light border/divider color
+  textSecondary: '#555555',
+  divider: '#eeeeee',
+  info: '#20c997',
 };
 
 // MUI Theme
@@ -31,6 +32,9 @@ const muiTheme = createTheme({
     divider: zennPalette.divider,
     error: {
       main: '#E04040',
+    },
+    info: {
+      main: zennPalette.info,
     },
   },
   typography: {

@@ -25,8 +25,14 @@ const OrderBook = ({ contestId }) => {
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.type !== 'orderBook') return;
-            setBuyList(data.buyList || []);
-            setSellList(data.sellList || []);
+            const buyOrders = data.buyList || [];
+            const sellOrders = data.sellList || [];
+
+            buyOrders.sort((a, b) => b.price - a.price);
+            sellOrders.sort((a, b) => a.price - b.price);
+
+            setBuyList(buyOrders);
+            setSellList(sellOrders);
         };
 
         ws.onclose = () => {

@@ -1,9 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { Box, Grid, Paper, Typography, Button, Divider, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, Grid, Paper, Typography, Button, Divider, ToggleButton, ToggleButtonGroup, TextField } from '@mui/material';
 import BlocklyComponent from '../components/BlocklyComponent';
 import SimulationCanvas from '../components/SimulationCanvas';
 import OrderBook from '../components/OrderBook';
+import Wallet from '../components/Wallet'; // Import Wallet component
+import LessonModal from '../components/LessonModal'; // Import LessonModal component
 import { toolbox_get } from '../blockly/toolbox';
 import { defineStaticBlocks } from '../blockly/customBlocks';
 import '../blockly/PythonGenerator.js';
@@ -13,74 +15,136 @@ import { highlight, languages } from 'prismjs/components/prism-core';
 import 'prismjs/components/prism-python';
 import 'prismjs/themes/prism.css';
 
-
-
 // Define static blocks once
 defineStaticBlocks();
 
 function Contest() {
   const { id: paramId } = useParams();
   const location = useLocation();
-  const [id, setId] = useState(paramId);
+
+  // Derive ID and lesson page status directly from the route for robustness
+  const isLessonPage = location.pathname === '/contest/a';
+  const id = isLessonPage ? 'a' : paramId;
+
   const [generatedCode, setGeneratedCode] = useState('');
   const [executionResult, setExecutionResult] = useState({ stdout: '', stderr: '' });
   const blocklyComponentRef = useRef(null);
   const [story, setStory] = useState('');
-  const [toolbox, setToolbox] = useState(null); // Initialize toolbox as null
-  const [simulationCode, setSimulationCode] = useState('');
+  const [toolbox, setToolbox] = useState(null);
   const [editorType, setEditorType] = useState('blockly');
   const [pythonCode, setPythonCode] = useState('');
+  const [walletData, setWalletData] = useState(null); // State for wallet data
+  const [executionTimeout, setExecutionTimeout] = useState(10000); // 10000 milliseconds default
+  const [isLessonModalOpen, setLessonModalOpen] = useState(false);
+  const [coinName, setCoinName] = useState('');
 
   useEffect(() => {
-    if (location.pathname === '/contest/a') {
-      setId('a');
-    } else {
-      setId(paramId);
-    }
-  }, [location, paramId]);
-
-  useEffect(() => {
-    const initializeBlockly = async () => {
-                      const newToolbox = JSON.parse(JSON.stringify(toolbox_get));
-                setToolbox(newToolbox);
-        if (id) {
-          /* 普通に要らない
-            try {
-
-                // 2. Fetch toolbox settings
-                const res = await fetch(`http://localhost:3001/contests/${id}/blockly_setting`);
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                }
-                const data = await res.json();
-
-                // 3. Update the toolbox state
-
-                // Fetch story
-                fetch(`http://localhost:3001/contests/${id}/story`)
-                    .then(res => res.text())
-                    .then(data => setStory(data))
-                    .catch(err => console.error("Failed to fetch story:", err));
-
-                // Fetch simulation code
-                fetch(`http://localhost:3001/contests/${id}/simulation`)
-                    .then(res => res.text())
-                    .then(data => setSimulationCode(data))
-                    .catch(err => console.error("Failed to fetch simulation code:", err));
-
-                // Set initial Python code
-                const coinName = id === 'a' ? 'lessonCoin1' : 'BeginnerCoin';
-                setPythonCode(`# This is a Python editor.\n# You can write your code here.\n\nimport requests\nimport sys\n\n# Get user ID from command line arguments\nuserId = sys.argv[1]\n\ndef buy(coin, price, amount):\n    try:\n        response = requests.post('http://localhost:3001/buy', json={'coin': coin, 'price': price, 'amount': amount, 'userId': userId}, timeout=5)\n        print(f"Buy Order Response: {response.status_code} {response.text}")\n    except requests.exceptions.RequestException as e:\n        print(f"Buy Order Error: {e}")\n\ndef sell(coin, price, amount):\n    try:\n        response = requests.post('http://localhost:3001/sell', json={'coin': coin, 'price': price, 'amount': amount, 'userId': userId}, timeout=5)\n        print(f"Sell Order Response: {response.status_code} {response.text}")\n    except requests.exceptions.RequestException as e:\n        print(f"Sell Order Error: {e}")\n\n# Example usage:\n# buy('' + coinName + ''', 1, 10)\n# sell('' + coinName + ''', 1, 10)\n`);
-
-            } catch (err) {
-                console.error("Failed to initialize Blockly environment:", err);
-            }
-                */
+    const fetchCoinName = async () => {
+      try {
+        const response = await fetch(`http://localhost:3001/contests/${id}/coin`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
+        const data = await response.json();
+        setCoinName(data.coinName);
+      } catch (error) {
+        console.error("Failed to fetch coin name:", error);
+      }
     };
 
-    initializeBlockly();
+    if (id) {
+      fetchCoinName();
+    }
   }, [id]);
+
+  const fetchWalletData = useCallback(async () => {
+    const userId = sessionStorage.getItem('userId');
+    if (!userId) return;
+    try {
+      const response = await fetch(`http://localhost:3001/wallets/${userId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setWalletData(data);
+    } catch (error) {
+      console.error("Failed to fetch wallet data:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isLessonPage) {
+      setLessonModalOpen(true);
+    }
+  }, [isLessonPage]);
+
+  useEffect(() => {
+    const userId = sessionStorage.getItem('userId');
+    if (!userId || !id) return;
+
+    const ws = new WebSocket(`ws://localhost:3001?userId=${userId}&contestId=${id}`);
+
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === 'stdout') {
+        setExecutionResult(prev => ({ ...prev, stdout: prev.stdout + message.data }));
+      } else if (message.type === 'stderr') {
+        setExecutionResult(prev => ({ ...prev, stderr: prev.stderr + message.data }));
+      } else if (message.type === 'close') {
+        console.log('Execution finished with code:', message.data.code);
+      }
+    };
+
+    ws.onopen = () => {
+      console.log('WebSocket connection established');
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [id]);
+
+  useEffect(() => {
+    const initializePage = async () => {
+      const newToolbox = JSON.parse(JSON.stringify(toolbox_get));
+      setToolbox(newToolbox);
+      fetchWalletData(); // Fetch wallet data on initial load
+
+      if (id) {
+        const userId = sessionStorage.getItem('userId');
+        // Set initial Python code with user_id and a sample program
+        setPythonCode(`user_id = "${userId}"
+
+# サンプルプログラム
+# lessonCoin1の現在の価格を取得します
+price = trade_api.get_price('lessonCoin1')
+
+# もし価格が100 KakuCoinより安ければ1枚買い、
+# 110 KakuCoinより高ければ1枚売ります。
+if price < 100:
+    # 1枚を99 KakuCoinで買い注文
+    trade_api.buy('lessonCoin1', 99, 1)
+    print("価格が" + str(price) + "なので、99 KakuCoinで1枚の買い注文を出しました。")
+elif price > 110:
+    # 1枚を111 KakuCoinで売り注文
+    trade_api.sell('lessonCoin1', 111, 1)
+    print("価格が" + str(price) + "なので、111 KakuCoinで1枚の売り注文を出しました。")
+else:
+    print("価格が" + str(price) + "なので、何もしません。")
+`);
+      }
+    };
+
+    initializePage();
+  }, [id, fetchWalletData]);
 
   const handleEditorChange = (event, newEditorType) => {
     if (newEditorType !== null) {
@@ -89,20 +153,20 @@ function Contest() {
   };
 
   const handleRunSimulation = async () => {
-    let code;
+    let userCode;
     if (editorType === 'blockly') {
       if (blocklyComponentRef.current) {
-        code = blocklyComponentRef.current.getGeneratedCode();
+        userCode = blocklyComponentRef.current.getGeneratedCode();
+        console.log('Generated Code:', userCode);
       }
     } else {
-      code = pythonCode;
+      userCode = pythonCode;
     }
-    setGeneratedCode(code);
 
+    const userId = sessionStorage.getItem('userId');
 
-    console.log(code)
-
-    const userId = sessionStorage.getItem('userId'); // Get userId
+    const finalCode = `import sys\nimport trade_api\ntrade_api.userId = sys.argv[1]\n\n${userCode}`;
+    setGeneratedCode(finalCode);
 
     try {
       const response = await fetch('http://localhost:3001/run_python', {
@@ -110,36 +174,37 @@ function Contest() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id, code, userId }), // Add userId to body
+        body: JSON.stringify({ id, code: finalCode, userId, timeout: executionTimeout }),
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-      }
 
       const result = await response.json();
       setExecutionResult(result);
-      console.log('Execution result:', result);
+      if (!response.ok) {
+        console.error('Python execution failed:', result.stderr);
+      }
+      
+      console.log('Python execution result:', result);
+      fetchWalletData(); // Re-fetch wallet data after execution
     } catch (error) {
       console.error('Failed to run Python code:', error);
+      setExecutionResult({ stdout: '', stderr: error.message });
     }
   };
 
   const handleOpenStoryWindow = () => {
     const converter = new showdown.Converter();
     const html = converter.makeHtml(story);
-    const newWindow = window.open('', '_blank',"popup");
+    const newWindow = window.open('', '_blank', "popup");
     newWindow.document.write(html);
     newWindow.document.close();
   };
 
   return (
     <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)', bgcolor: 'background.default' }}>
-      <Grid container sx={{display: 'flex', height: '100%' }}>
+      <Grid container sx={{ display: 'flex', height: '100%' }}>
 
         {/* Center: Blockly Workspace */}
-        <Grid item sx={{width:'55vw', height: '100%' }}>
+        <Grid item sx={{ width: '55vw', height: '100%' }}>
           <ToggleButtonGroup
             value={editorType}
             exclusive
@@ -158,6 +223,7 @@ function Contest() {
               <BlocklyComponent
                 ref={blocklyComponentRef}
                 toolbox={toolbox}
+                contestId={id}
                 workspaceConfiguration={{
                   renderer: 'geras',
                   grid: {
@@ -197,48 +263,67 @@ function Contest() {
         </Grid>
 
         {/* Right Sidebar: Simulation and Analysis */}
-        <Grid item xs={6} sx={{ width:'40vw',height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Grid item xs={6} sx={{ width: '40vw', height: '100%', display: 'flex', flexDirection: 'column' }}>
           <Paper sx={{
-              height: '100%',
-              backgroundColor: 'transparent',
-              p: 2, 
-              display: 'flex', 
-              flexDirection: 'column', 
-              borderRadius: 0, 
-              borderLeft: '1px solid #4AA0DC' 
-            }}>
+            height: '100%',
+            backgroundColor: 'transparent',
+            p: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: 0,
+            borderLeft: '1px solid #4AA0DC'
+          }}>
             <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-              
-              
+
               <Typography variant="h6" color="text.primary" sx={{ mb: 1 }}>シミュレーション</Typography>
-              <SimulationCanvas contestId={id} />
+              <SimulationCanvas contestId={id} coinName={coinName} />
               <OrderBook contestId={id} />
-              
+
               <Divider sx={{ my: 1 }} />
 
               <Typography variant="h6" color="text.primary" sx={{ mb: 1 }}>状況分析</Typography>
               <Box sx={{ color: 'text.primary', flexGrow: 1 }}>
-                  <Paper sx={{p: 1, mb: 1, bgcolor: 'background.paper'}} elevation={2}>
-                      <Typography variant="subtitle2">スコア: 12,345 / 最高: 15,000</Typography>
-                  </Paper>
-                  <Paper sx={{p: 1, backgroundColor: executionResult.stderr ? '#FFD0D0' : 'background.paper'}} elevation={2}>
-                      <Typography variant="subtitle2" sx={{color: executionResult.stderr ? 'error.main' : 'text.primary'}}>
-                          {executionResult.stderr || executionResult.stdout}
-                      </Typography>
-                  </Paper>
+                <Wallet walletData={walletData} />
+                <Paper sx={{ p: 1, mt: 1, backgroundColor: executionResult.stderr ? '#FFD0D0' : 'background.paper' }} elevation={2}>
+                  <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>
+                    <b>Output:</b>
+                    <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{executionResult.stdout}</pre>
+                  </Typography>
+                  {executionResult.stderr && (
+                    <Typography variant="subtitle2" sx={{ color: 'error.main', mt: 1 }}>
+                      <b>Error:</b>
+                      <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{executionResult.stderr}</pre>
+                    </Typography>
+                  )}
+                </Paper>
               </Box>
             </Box>
 
             <Divider sx={{ my: 2 }} />
 
+            <TextField
+              label="実行時間制限 (ミリ秒)"
+              type="number"
+              value={executionTimeout}
+              onChange={(e) => setExecutionTimeout(e.target.value)}
+              InputLabelProps={{
+                shrink: true,
+              }}
+              sx={{ mb: 2, width: '100%' }}
+            />
+
             <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+              {isLessonPage && (
+                <Button variant="contained" onClick={() => setLessonModalOpen(true)} sx={{ flex: 1 }} color="info">レッスン</Button>
+              )}
               <Button variant="contained" onClick={handleRunSimulation} sx={{ flex: 1 }} color="primary">▶︎ 実行</Button>
               <Button variant="outlined" sx={{ flex: 1 }} color="primary">リセット</Button>
               <Button variant="contained" sx={{ flex: 1 }} color="secondary">提出</Button>
             </Box>
           </Paper>
-          </Grid>
+        </Grid>
       </Grid>
+      <LessonModal open={isLessonModalOpen} onClose={() => setLessonModalOpen(false)} lessonId={id} lessonHash={location.hash} />
     </Box>
   );
 }
